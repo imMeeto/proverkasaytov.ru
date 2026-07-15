@@ -1,0 +1,44 @@
+# Локальная инфраструктура для разработки.
+# Запуск: docker compose -f docker-compose.dev.yml up -d
+services:
+  postgres:
+    image: postgres:17
+    container_name: lawcheck_pg
+    environment:
+      POSTGRES_USER: lawcheck
+      POSTGRES_PASSWORD: lawcheck
+      POSTGRES_DB: lawcheck
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lawcheck -d lawcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: lawcheck_redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # SMTP-заглушка для писем (Фаза 4). Web UI на http://localhost:5001
+  smtp4dev:
+    image: rnwood/smtp4dev:v3
+    container_name: lawcheck_smtp
+    ports:
+      - "5001:80"
+      - "2525:25"
+    profiles:
+      - mail
+
+volumes:
+  pgdata:
