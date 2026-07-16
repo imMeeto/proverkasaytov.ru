@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Документация и вендорные файлы дизайн-экспорта — не исходники проекта.
+    "docs/**",
   ]),
 ]);
 

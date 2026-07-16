@@ -16,15 +16,15 @@ export function SiteHeader() {
           </span>
         </Link>
         <nav className="hidden items-center gap-7 text-body-sm text-moon-mist sm:flex">
-          <a href="/#how" className="hover:text-frost-glow">
+          <Link href="/#how" className="hover:text-frost-glow">
             Как работает
-          </a>
-          <a href="/#tariffs" className="hover:text-frost-glow">
+          </Link>
+          <Link href="/#tariffs" className="hover:text-frost-glow">
             Тарифы
-          </a>
-          <a href="/#scan" className="hover:text-frost-glow">
+          </Link>
+          <Link href="/#scan" className="hover:text-frost-glow">
             Проверить сайт
-          </a>
+          </Link>
         </nav>
       </div>
     </header>
