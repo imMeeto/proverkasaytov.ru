@@ -29,6 +29,10 @@ export function SiteFooter() {
               Сервис носит информационный характер и не заменяет юридическую консультацию.
               Точный размер санкций определяет Роскомнадзор или суд.
             </p>
+            <p className="mt-3 text-body-sm text-moon-mist">
+              {SITE_SHORT_NAME} — частный сервис. Не является государственным органом,
+              не связан и не аффилирован с Роскомнадзором и иными органами власти.
+            </p>
           </div>
           <nav className="grid grid-cols-2 gap-x-8 gap-y-2 text-body-sm text-moon-mist sm:grid-cols-1">
             {legalLinks.map((l) => (

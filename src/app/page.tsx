@@ -29,9 +29,9 @@ export default function Home() {
           className="mt-6 max-w-3xl text-heading-lg sm:text-display"
           style={{ fontFamily: 'var(--font-aeonikpro)', fontWeight: 500 }}
         >
-          <span className="text-skywash">Узнайте, что нарушает ваш сайт —</span>
+          <span className="text-skywash">Узнайте, что на вашем сайте</span>
           <br />
-          <span className="text-skywash">раньше, чем это найдёт робот РКН</span>
+          <span className="text-skywash">нарушает законы РФ</span>
         </h1>
         <p className="mt-5 max-w-xl text-body text-moon-mist">
           Автоматическая проверка сайта на соответствие законодательству РФ. Балл из 100 и список
