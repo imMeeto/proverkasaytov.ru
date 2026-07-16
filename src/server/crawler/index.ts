@@ -73,13 +73,24 @@ function toNetworkRequest(pageUrl: string, requestUrl: string, type: string): Ne
 export class CrawlFatalError extends Error {}
 
 async function newContext(browser: Browser): Promise<BrowserContext> {
-  return browser.newContext({
+  const context = await browser.newContext({
     userAgent: BOT_USER_AGENT,
     viewport: { width: 1366, height: 900 },
     locale: 'ru-RU',
     serviceWorkers: 'block',
     ignoreHTTPSErrors: true, // невалидный серт — находка чека A1, а не повод падать
   });
+
+  // Шим __name. Воркер запускается через tsx (и в dev, и в проде): esbuild компилирует
+  // с keepNames и вставляет в тела функций вызовы хелпера __name. Playwright сериализует
+  // функцию в браузер, а определения хелпера там нет → ReferenceError и пустой снапшот.
+  // Передаём строкой, а НЕ функцией: функцию esbuild трансформирует так же, и шим сам
+  // упадёт с той же ошибкой. Не затираем существующий __name сайта (||=).
+  await context.addInitScript({
+    content: 'globalThis.__name = globalThis.__name || function (f) { return f; };',
+  });
+
+  return context;
 }
 
 /** Обход одной страницы. Ошибка загрузки не роняет скан — страница помечается статусом. */
