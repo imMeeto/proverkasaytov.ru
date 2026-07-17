@@ -9,6 +9,8 @@ import { DEDUP_WINDOW_MS, QUEUE_SCAN } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { assertPublicUrl } from '@/server/security/ssrf';
 import { checkKii, KII_REFUSAL_MESSAGE } from '@/server/security/kii';
+import { rateLimit, hashIp, clientIp } from '@/server/security/ratelimit';
+import { verifyCaptcha } from '@/server/security/captcha';
 
 export const runtime = 'nodejs';
 
@@ -30,6 +32,14 @@ export async function POST(req: Request) {
     return fail('bad_url', 'Не удалось разобрать адрес сайта. Пример: example.ru', 400);
   }
 
+  const ip = clientIp(req);
+  const iph = hashIp(ip);
+
+  // Капча (ПС-08 §5): без валидного токена — 403. В dev без ключа SmartCaptcha пропускается.
+  if (!(await verifyCaptcha(parsed.data.captchaToken ?? '', ip))) {
+    return fail('captcha_failed', 'Проверка «я не робот» не пройдена. Обновите страницу и попробуйте снова.', 403);
+  }
+
   // Стоп-КИИ (ПС-08 §8.2): банки, госорганы, связь — не сканируем даже по заявке (ст. 274.1 УК).
   const kii = checkKii(normalized.domain, normalized.hostname);
   if (kii.blocked) {
@@ -45,7 +55,19 @@ export async function POST(req: Request) {
     return fail('unsafe_url', safe.reason, 422);
   }
 
-  // TODO Фаза 2 (антиабьюз): SmartCaptcha verify → rate-limit по IP → blocked_domains.
+  // Предохранитель: длинная очередь → честный 503 вместо часового ожидания (ПС-08 §5).
+  if ((await scanQueue.getWaitingCount()) > 50) {
+    return fail('overloaded', 'Сейчас высокая нагрузка. Попробуйте через несколько минут.', 503);
+  }
+
+  // Rate-limit по IP (ПС-08 §5): 5/сутки и 2/час.
+  const [okDay, okHour] = await Promise.all([
+    rateLimit(`scan:ip:d:${iph}`, 5, 86_400),
+    rateLimit(`scan:ip:h:${iph}`, 2, 3_600),
+  ]);
+  if (!okDay || !okHour) {
+    return fail('rate_limited', 'Слишком много проверок с вашего адреса. Попробуйте позже.', 429);
+  }
 
   // Дедуп: последний done-скан того же домена младше 60 минут переиспользуется (ПС-05 §1).
   const since = new Date(Date.now() - DEDUP_WINDOW_MS);
@@ -66,6 +88,12 @@ export async function POST(req: Request) {
 
   if (recent) {
     return ok({ scanId: recent.id, deduped: true });
+  }
+
+  // Домен: не более 3 РЕАЛЬНЫХ сканов/сутки от всех IP (защита чужого сайта от долбёжки
+  // нашим роботом, ПС-08 §5). Считаем только после промаха дедупа — кэш-выдача сайт не грузит.
+  if (!(await rateLimit(`scan:dom:${normalized.domain}`, 3, 86_400))) {
+    return fail('domain_rate_limited', 'Этот сайт уже проверялся несколько раз за сутки. Попробуйте позже.', 429);
   }
 
   const meta: ScanMeta = {

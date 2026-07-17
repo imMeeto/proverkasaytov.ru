@@ -22,6 +22,7 @@ import type { NetworkRequest, PageSnapshot, ScanContext } from '@/server/checks/
 const PAGE_TIMEOUT_MS = 20_000;
 const SETTLE_MS = 2_000; // добираем ленивые скрипты и cookie-баннеры
 const POLITE_PAUSE_MS = 500; // пауза между страницами одного сайта (ПС-08 §6)
+const PAGE_BYTE_BUDGET = 25 * 1024 * 1024; // бюджет загрузки страницы (ПС-04 §3): не даём сайту дренировать воркер
 
 export type CrawlProgress = (stage: {
   stage: 'infra' | 'pages' | 'crawl';
@@ -33,18 +34,31 @@ export type CrawlProgress = (stage: {
 
 let browserSingleton: Browser | null = null;
 let scansSinceRestart = 0;
+let activeContexts = 0;
+let launchPromise: Promise<Browser> | null = null;
 const RESTART_EVERY = 50; // профилактика утечек (ПС-04 §8)
 
 async function getBrowser(): Promise<Browser> {
-  if (browserSingleton?.isConnected() && scansSinceRestart < RESTART_EVERY) return browserSingleton;
-  if (browserSingleton) {
-    await browserSingleton.close().catch(() => {});
+  const alive = browserSingleton?.isConnected() ?? false;
+  // Профилактический рестарт — ТОЛЬКО когда нет активных обходов, иначе убьём чужой контекст.
+  const needsRestart = alive && scansSinceRestart >= RESTART_EVERY && activeContexts === 0;
+  if (alive && !needsRestart) return browserSingleton!;
+
+  // Мьютекс: при concurrency=2 два скана не должны запустить два браузера (утечка Chromium).
+  if (launchPromise) return launchPromise;
+  launchPromise = (async () => {
+    if (browserSingleton && (needsRestart || !browserSingleton.isConnected())) {
+      await browserSingleton.close().catch(() => {});
+    }
     scansSinceRestart = 0;
+    browserSingleton = await chromium.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+    return browserSingleton;
+  })();
+  try {
+    return await launchPromise;
+  } finally {
+    launchPromise = null;
   }
-  browserSingleton = await chromium.launch({
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  });
-  return browserSingleton;
 }
 
 export async function closeBrowser(): Promise<void> {
@@ -101,10 +115,16 @@ async function crawlPage(
 ): Promise<PageSnapshot> {
   const page = await context.newPage();
   const started = Date.now();
+  let bytesLoaded = 0;
 
   page.on('request', (r) => {
     const nr = toNetworkRequest(url, r.url(), r.resourceType());
     if (nr) network.push(nr);
+  });
+  // Учёт объёма загрузки для бюджета страницы (ПС-04 §3).
+  page.on('response', (resp) => {
+    const len = Number(resp.headers()['content-length'] ?? 0);
+    if (Number.isFinite(len) && len > 0) bytesLoaded += len;
   });
 
   // SSRF-фильтр на под-запросы: проверяемый сайт может сам дёргать 10.0.0.5 из своего JS.
@@ -120,6 +140,8 @@ async function crawlPage(
     }
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return route.abort();
     if (isForbiddenHostname(u.hostname)) return route.abort();
+    // Исчерпан бюджет страницы (>5 МБ на ресурс content-length при накоплении) — не тянем дальше.
+    if (bytesLoaded > PAGE_BYTE_BUDGET) return route.abort();
     // Тяжёлое медиа не нужно ни одному чеку.
     if (route.request().resourceType() === 'media') return route.abort();
     return route.continue();
@@ -133,12 +155,11 @@ async function crawlPage(
     await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => {});
     await page.waitForTimeout(SETTLE_MS);
 
-    // Редирект мог увести на чужой хост — проверяем конечный URL (ПС-08 §3).
+    // Конечный URL после всех редиректов проверяем ВСЕГДА (ПС-08 §3): редирект мог увести
+    // на приватный адрес, а DNS хоста — смениться между предпроверкой и загрузкой (rebinding).
     const finalUrl = page.url();
-    if (new URL(finalUrl).hostname !== new URL(url).hostname) {
-      const verdict = await assertPublicUrl(finalUrl);
-      if (!verdict.ok) throw new CrawlFatalError(`unsafe_redirect: ${verdict.reason}`);
-    }
+    const verdict = await assertPublicUrl(finalUrl);
+    if (!verdict.ok) throw new CrawlFatalError(`unsafe_redirect: ${verdict.reason}`);
 
     const snapshot = await collectSnapshot(page, finalUrl, res?.status() ?? 0, Date.now() - started);
     return snapshot;
@@ -188,6 +209,7 @@ export async function crawlSite(
   const browser = await getBrowser();
   scansSinceRestart++;
   const context = await newContext(browser);
+  activeContexts++; // рестарт браузера не тронет активный обход, пока refcount > 0
   const network: NetworkRequest[] = [];
   const pages: PageSnapshot[] = [];
 
@@ -227,6 +249,7 @@ export async function crawlSite(
 
     return { targetUrl, domain, pages, network, ssl, geo };
   } finally {
+    activeContexts--;
     await context.close().catch(() => {});
   }
 }

@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq';
 import { createRedis } from '@/server/realtime/redis';
-import { QUEUE_SCAN, QUEUE_DELIVER } from '@/lib/constants';
+import { QUEUE_SCAN, QUEUE_DELIVER, QUEUE_MAINTENANCE } from '@/lib/constants';
 import { env } from '@/lib/env';
 
 export type ScanJobData = { scanId: string };
@@ -9,6 +9,7 @@ export type DeliverJobData = { scanId: string };
 const globalForQueue = globalThis as unknown as {
   _scanQueue?: Queue<ScanJobData>;
   _deliverQueue?: Queue<DeliverJobData>;
+  _maintenanceQueue?: Queue;
 };
 
 // Очередь scan: concurrency 2, 2 попытки, exponential backoff ≥ 30 с (ПС-01 §5).
@@ -37,7 +38,16 @@ export const deliverQueue =
     },
   });
 
+// Очередь обслуживания: повторяющиеся задачи ретенции и добивания зависших сканов.
+export const maintenanceQueue =
+  globalForQueue._maintenanceQueue ??
+  new Queue(QUEUE_MAINTENANCE, {
+    connection: createRedis(),
+    defaultJobOptions: { removeOnComplete: true, removeOnFail: { count: 50 } },
+  });
+
 if (env.NODE_ENV !== 'production') {
   globalForQueue._scanQueue = scanQueue;
   globalForQueue._deliverQueue = deliverQueue;
+  globalForQueue._maintenanceQueue = maintenanceQueue;
 }

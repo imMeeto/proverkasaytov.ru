@@ -1,6 +1,7 @@
 // Имена очередей BullMQ (ПС-01 §5).
 export const QUEUE_SCAN = 'scan';
 export const QUEUE_DELIVER = 'deliver';
+export const QUEUE_MAINTENANCE = 'maintenance'; // ретенция + добивание зависших (ПС-02 §5, ПС-04 §8)
 
 // Redis pub/sub канал прогресса скана (ПС-04 §7).
 export const scanChannel = (scanId: string) => `scan:${scanId}`;

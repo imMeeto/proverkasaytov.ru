@@ -99,12 +99,15 @@ export function isForbiddenHostname(hostname: string): boolean {
   return false;
 }
 
+// dns.lookup (getaddrinfo) — тот же путь резолва, что у Chromium, и учитывает /etc/hosts.
+// resolve4/6 их игнорировали → рассинхрон проверенного и реального адреса (TOCTOU).
 async function resolveAll(hostname: string): Promise<string[]> {
-  const out: string[] = [];
-  const [v4, v6] = await Promise.allSettled([dns.resolve4(hostname), dns.resolve6(hostname)]);
-  if (v4.status === 'fulfilled') out.push(...v4.value);
-  if (v6.status === 'fulfilled') out.push(...v6.value);
-  return out;
+  try {
+    const res = await dns.lookup(hostname, { all: true, verbatim: true });
+    return res.map((r) => r.address);
+  } catch {
+    return [];
+  }
 }
 
 function ownHostname(): string | null {
@@ -115,6 +118,29 @@ function ownHostname(): string | null {
   } catch {
     return null;
   }
+}
+
+// IP собственной инфраструктуры (домен сервиса + явные из OWN_PUBLIC_IPS). Резолвим один раз.
+// Иначе пользователь мог бы натравить робот на наш же VPS по его публичному IP (ПС-08 §2).
+let ownIpsPromise: Promise<Set<string>> | null = null;
+function getOwnIps(): Promise<Set<string>> {
+  if (ownIpsPromise) return ownIpsPromise;
+  ownIpsPromise = (async () => {
+    const set = new Set<string>();
+    const host = ownHostname();
+    if (host && !net.isIP(host)) {
+      try {
+        for (const r of await dns.lookup(host, { all: true })) set.add(r.address);
+      } catch {
+        /* домен не резолвится — не критично */
+      }
+    }
+    for (const ip of (process.env.OWN_PUBLIC_IPS ?? '').split(',').map((s) => s.trim())) {
+      if (ip) set.add(ip);
+    }
+    return set;
+  })();
+  return ownIpsPromise;
 }
 
 /**
@@ -150,20 +176,23 @@ export async function assertPublicUrl(rawUrl: string): Promise<SsrfVerdict> {
     return { ok: false, reason: 'Этот адрес принадлежит самому сервису' };
   }
 
-  // IP-литерал уже проверен в isForbiddenHostname — резолвить нечего.
-  if (net.isIP(hostname)) return { ok: true, addresses: [hostname] };
+  const ownIps = await getOwnIps();
 
-  let addresses: string[];
-  try {
-    addresses = await resolveAll(hostname);
-  } catch {
-    return { ok: false, reason: 'Не удалось определить адрес сайта' };
+  // IP-литерал уже проверен в isForbiddenHostname на приватность — сверяем с own-IP.
+  if (net.isIP(hostname)) {
+    if (ownIps.has(hostname)) return { ok: false, reason: 'Адрес принадлежит инфраструктуре сервиса' };
+    return { ok: true, addresses: [hostname] };
   }
+
+  const addresses = await resolveAll(hostname);
   if (addresses.length === 0) {
     return { ok: false, reason: 'Домен не существует или не резолвится' };
   }
   if (addresses.some(isPrivateIp)) {
     return { ok: false, reason: 'Домен указывает на внутреннюю сеть' };
+  }
+  if (addresses.some((a) => ownIps.has(a))) {
+    return { ok: false, reason: 'Адрес принадлежит инфраструктуре сервиса' };
   }
 
   return { ok: true, addresses };

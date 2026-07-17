@@ -10,14 +10,28 @@ const nextConfig: NextConfig = {
     "ioredis",
     "postgres",
   ],
-  // Безопасные заголовки (ПС-08 §7). Полный CSP с frame-src для SmartCaptcha и виджета
-  // оплаты — в Фазе 5, когда эти origin появятся (сейчас неверный CSP сломал бы приложение).
-  // HSTS — на прокси (ПС-08 §7).
+  // Заголовки безопасности (ПС-08 §7). HSTS — на прокси. connect/frame/script заранее
+  // разрешают Метрику (после согласия) и SmartCaptcha/ЮKassa. 'unsafe-inline' — Next
+  // инлайнит стили/скрипты; 'unsafe-eval' только в dev (нужен HMR).
   async headers() {
+    const dev = process.env.NODE_ENV !== "production";
+    const csp = [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "img-src 'self' data: blob:",
+      "font-src 'self'",
+      "connect-src 'self' https://mc.yandex.ru https://smartcaptcha.yandexcloud.net",
+      "frame-src https://smartcaptcha.yandexcloud.net https://yookassa.ru https://*.yookassa.ru",
+      `script-src 'self' 'unsafe-inline' https://mc.yandex.ru https://smartcaptcha.yandexcloud.net${dev ? " 'unsafe-eval'" : ""}`,
+      "style-src 'self' 'unsafe-inline'",
+    ].join("; ");
     return [
       {
         source: "/:path*",
         headers: [
+          { key: "Content-Security-Policy", value: csp },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },

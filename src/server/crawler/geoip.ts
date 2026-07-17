@@ -14,26 +14,29 @@ import type { GeoInfo } from '@/server/checks/types';
 
 let countryReader: Reader<CountryResponse> | null = null;
 let asnReader: Reader<AsnResponse> | null = null;
-let initialized = false;
+let initPromise: Promise<void> | null = null;
 
-async function init(): Promise<void> {
-  if (initialized) return;
-  initialized = true;
-
-  if (env.GEOIP_DB_PATH) {
-    try {
-      countryReader = await open<CountryResponse>(env.GEOIP_DB_PATH);
-    } catch (e) {
-      logger.warn({ path: env.GEOIP_DB_PATH, e }, 'GeoLite2-Country недоступна — A2 даст unable');
+// Кэшируем сам ПРОМИС инициализации: булев флаг, выставленный до await open(), при
+// concurrency=2 давал второму скану «готово» с ещё не загруженными ридерами → ложный unable.
+function init(): Promise<void> {
+  if (initPromise) return initPromise;
+  initPromise = (async () => {
+    if (env.GEOIP_DB_PATH) {
+      try {
+        countryReader = await open<CountryResponse>(env.GEOIP_DB_PATH);
+      } catch (e) {
+        logger.warn({ path: env.GEOIP_DB_PATH, e }, 'GeoLite2-Country недоступна — A2 даст unable');
+      }
     }
-  }
-  if (env.GEOIP_ASN_DB_PATH) {
-    try {
-      asnReader = await open<AsnResponse>(env.GEOIP_ASN_DB_PATH);
-    } catch (e) {
-      logger.warn({ path: env.GEOIP_ASN_DB_PATH, e }, 'GeoLite2-ASN недоступна — A3 даст unable');
+    if (env.GEOIP_ASN_DB_PATH) {
+      try {
+        asnReader = await open<AsnResponse>(env.GEOIP_ASN_DB_PATH);
+      } catch (e) {
+        logger.warn({ path: env.GEOIP_ASN_DB_PATH, e }, 'GeoLite2-ASN недоступна — A3 даст unable');
+      }
     }
-  }
+  })();
+  return initPromise;
 }
 
 /** Первый публичный IPv4 домена. Приватные адреса отсекаются (SSRF уже проверил, это пояс и подтяжки). */

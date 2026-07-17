@@ -1,4 +1,5 @@
 import type { Scan, CheckResultRow } from '@/server/db/schema';
+import { penaltyFor } from '@/server/checks/scoring';
 
 // Публичная форма скана — БЕЗ email и прочих ПДн (ПС-05 §1).
 export type PublicScan = {
@@ -31,23 +32,51 @@ export function toPublicScan(scan: Scan): PublicScan {
   };
 }
 
-// Публичная форма результатов чеков.
-// Фаза 3: серверное усечение неоплаченного (2 самых тяжёлых fail целиком, остальные — заголовки),
-// подмешивание текстов из checks/texts.ts. Пока — каркасная проекция строк.
+// Публичная форма результатов чеков с СЕРВЕРНЫМ усечением (ПС-05 §1) — платный контент
+// физически не уходит клиенту до оплаты (не CSS-блюр). Тексты «что делать»/сниппеты
+// подмешиваются в API только для разблокированных элементов (Фаза 3, checks/texts.ts).
 export type PublicCheckResult = {
   checkId: string;
   status: CheckResultRow['status'];
   severity: CheckResultRow['severity'];
-  locked: boolean;
+  locked: boolean; // тело скрыто (заголовок+статус видны, evidence вырезан)
   evidence: CheckResultRow['evidence'];
 };
 
 export function toPublicResults(results: CheckResultRow[], isPaid: boolean): PublicCheckResult[] {
-  return results.map((r) => ({
-    checkId: r.checkId,
-    status: r.status,
-    severity: r.severity,
-    locked: !isPaid, // TODO Фаза 3: pass/unable всегда открыты; 2 тяжёлых fail открыты; блюр остального
-    evidence: isPaid ? r.evidence : null,
-  }));
+  if (isPaid) {
+    return results.map((r) => ({
+      checkId: r.checkId,
+      status: r.status,
+      severity: r.severity,
+      locked: false,
+      evidence: r.evidence,
+    }));
+  }
+
+  // Неоплаченный отчёт: pass/unable/not_applicable открыты целиком (бесплатная ценность
+  // и честность), плюс ДВА fail с наибольшим penalty. Остальные fail/warn — только заголовок.
+  const openFail = new Set(
+    results
+      .map((r, i) => ({ i, pen: r.status === 'fail' ? penaltyFor('fail', r.severity) : -1 }))
+      .filter((x) => x.pen > 0)
+      .sort((a, b) => b.pen - a.pen)
+      .slice(0, 2)
+      .map((x) => x.i),
+  );
+
+  return results.map((r, i) => {
+    const open =
+      r.status === 'pass' ||
+      r.status === 'unable' ||
+      r.status === 'not_applicable' ||
+      openFail.has(i);
+    return {
+      checkId: r.checkId,
+      status: r.status,
+      severity: r.severity,
+      locked: !open,
+      evidence: open ? r.evidence : null,
+    };
+  });
 }

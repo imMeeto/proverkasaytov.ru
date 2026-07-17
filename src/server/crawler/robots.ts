@@ -130,11 +130,13 @@ export async function fetchRobots(origin: string, userAgent: string): Promise<Ro
       redirect: 'follow',
     });
     if (!res.ok) return EMPTY_ROBOTS;
-    const ct = res.headers.get('content-type') ?? '';
-    // HTML вместо robots.txt — типичная заглушка 404; правил нет.
-    if (ct.includes('text/html')) return EMPTY_ROBOTS;
     const text = await res.text();
     if (text.length > 512_000) return EMPTY_ROBOTS;
+    // Часть серверов отдаёт валидный robots.txt с ошибочным Content-Type text/html.
+    // Отбрасываем только тело, которое похоже на HTML и НЕ содержит директив robots.
+    const looksHtml = /^\s*<(?:!doctype|html|head|body)/i.test(text);
+    const hasDirectives = /^\s*(user-agent|disallow|allow|sitemap|crawl-delay)\s*:/im.test(text);
+    if (looksHtml && !hasDirectives) return EMPTY_ROBOTS;
     return parseRobots(text);
   } catch {
     return EMPTY_ROBOTS;

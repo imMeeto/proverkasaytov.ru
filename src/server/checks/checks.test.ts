@@ -1,4 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { toPublicResults } from '@/server/report/serialize';
+import type { CheckResultRow } from '@/server/db/schema';
 import { httpsSsl } from './https-ssl';
 import { hostingGeo } from './hosting-geo';
 import { privacyPolicyExists } from './privacy-policy-exists';
@@ -472,18 +474,71 @@ describe('аудит: анти-false-positive', () => {
     ).toBe(85);
   });
 
-  it('падение одного чека не роняет скан — деградирует в unable', () => {
-    const broken = { ...httpsSsl, run: () => { throw new Error('bang'); } };
-    const original = CHECKS[0];
-    // Проверяем контракт runChecks напрямую, не мутируя реестр.
-    const results = [broken, original].map((check) => {
-      try {
-        return { check, result: check.run(ctx()) };
-      } catch {
-        return { check, result: { status: 'unable' as const, evidence: [] } };
-      }
+  it('падение чека деградирует в unable, соседи отрабатывают (реальный runChecks)', () => {
+    // Реально роняем чек через spy на его же .run — тот же объект лежит в CHECKS.
+    const spy = vi.spyOn(httpsSsl, 'run').mockImplementation(() => {
+      throw new Error('bang');
     });
-    expect(results[0].result.status).toBe('unable');
-    expect(results[1].result.status).toBe('pass');
+    try {
+      const runs = runChecks(ctx());
+      const a1 = runs.find((r) => r.check.id === 'https_ssl')!;
+      const a2 = runs.find((r) => r.check.id === 'hosting_geo')!;
+      expect(a1.result.status).toBe('unable');
+      expect(a1.result.evidence.length).toBeGreaterThan(0); // непустой evidence «проверьте вручную»
+      expect(a2.result.status).toBe('pass'); // соседний чек не пострадал
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe('A1 · https_ssl — различение причин fail', () => {
+  it('detail «не отвечает по HTTPS» при httpsReachable:false', () => {
+    const r = httpsSsl.run(ctx({ ssl: okSsl({ httpsReachable: false, valid: true }) }));
+    expect(r.status).toBe('fail');
+    expect(r.evidence[0].detail).toMatch(/не отвечает по HTTPS/i);
+  });
+
+  it('detail «просрочен» при отрицательном daysLeft', () => {
+    const r = httpsSsl.run(ctx({ ssl: okSsl({ valid: false, daysLeft: -3 }) }));
+    expect(r.status).toBe('fail');
+    expect(r.evidence[0].detail).toMatch(/просрочен/i);
+  });
+});
+
+describe('serialize: серверное усечение ПС-05 §1', () => {
+  const row = (checkId: string, status: string, severity: string) =>
+    ({
+      id: 1,
+      scanId: 's',
+      checkId,
+      status,
+      severity,
+      evidence: [{ pageUrl: 'x', detail: 'd' }],
+      createdAt: new Date(),
+    }) as unknown as CheckResultRow;
+
+  it('неоплаченный: pass/unable открыты, 2 тяжёлых fail открыты, прочие fail — locked', () => {
+    const rows = [
+      row('a', 'fail', 'critical'), // -14 → топ-2 open
+      row('b', 'fail', 'major'), // -8 → топ-2 open
+      row('c', 'fail', 'minor'), // -3 → locked
+      row('d', 'pass', 'major'), // open
+      row('e', 'unable', 'critical'), // open
+    ];
+    const by = Object.fromEntries(toPublicResults(rows, false).map((p) => [p.checkId, p]));
+    expect(by.a.locked).toBe(false);
+    expect(by.a.evidence).not.toBeNull();
+    expect(by.b.locked).toBe(false);
+    expect(by.c.locked).toBe(true);
+    expect(by.c.evidence).toBeNull();
+    expect(by.d.locked).toBe(false);
+    expect(by.e.locked).toBe(false);
+  });
+
+  it('оплаченный: всё открыто', () => {
+    const pub = toPublicResults([row('a', 'fail', 'critical')], true);
+    expect(pub[0].locked).toBe(false);
+    expect(pub[0].evidence).not.toBeNull();
   });
 });

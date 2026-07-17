@@ -19,11 +19,7 @@ function attachSubscriberHandlers(): void {
   if (globalForSse._sseAttached) return;
   globalForSse._sseAttached = true;
 
-  redisSub.psubscribe('scan:*').catch((err) => {
-    globalForSse._sseAttached = false;
-    logger.error({ err }, 'psubscribe scan:* failed');
-  });
-
+  // pmessage навешиваем ОДИН раз, независимо от psubscribe.
   redisSub.on('pmessage', (_pattern: string, channel: string, message: string) => {
     const scanId = channel.slice('scan:'.length);
     let event: ScanEvent;
@@ -34,6 +30,15 @@ function attachSubscriberHandlers(): void {
     }
     scanEmitter.emit(scanId, event);
   });
+
+  // psubscribe с повтором: одна попытка при импорте могла упасть (Redis ещё не поднялся),
+  // оставив fan-out мёртвым навсегда. 'ready' срабатывает при первом коннекте И при каждом
+  // реконнекте ioredis — так подписка самовосстанавливается.
+  const subscribe = () => {
+    redisSub.psubscribe('scan:*').catch((err) => logger.error({ err }, 'psubscribe scan:* failed, повтор при ready'));
+  };
+  redisSub.on('ready', subscribe);
+  subscribe();
 }
 
 // Активируем подписку при первом импорте модуля (app-процесс).

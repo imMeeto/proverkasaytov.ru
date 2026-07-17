@@ -128,6 +128,17 @@ export function selectPages(opts: {
   const seen = new Set<string>(home ? [home] : []);
   const candidates: { url: string; score: number }[] = [];
 
+  // robots.txt читается для origin главной; по RFC 9309 он действует только на СВОЙ хост.
+  // Поэтому обходим лишь тот же хост (www и apex — один хост); другие поддомены пропускаем.
+  const bareHost = (u: string) => {
+    try {
+      return new URL(u).hostname.toLowerCase().replace(/^www\./, '');
+    } catch {
+      return '';
+    }
+  };
+  const homeHost = bareHost(homeUrl);
+
   const consider = (raw: string) => {
     let abs: string;
     try {
@@ -137,7 +148,7 @@ export function selectPages(opts: {
     }
     const norm = normalizeForDedup(abs);
     if (!norm || seen.has(norm)) return;
-    if (!isSameSite(norm, domain)) return;
+    if (bareHost(norm) !== homeHost || !isSameSite(norm, domain)) return;
     if (SKIP_EXT.test(new URL(norm).pathname)) return;
     if (!isAllowedByRobots(robots, new URL(norm).pathname)) return; // публичное обещание на /bot
     seen.add(norm);
