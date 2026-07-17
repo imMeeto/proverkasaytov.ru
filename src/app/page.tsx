@@ -1,6 +1,8 @@
 import * as React from 'react';
+import Link from 'next/link';
 import { ScanForm } from '@/components/scan-form';
 import { LeadCapture } from '@/components/lead-capture';
+import { articles } from '@/lib/articles';
 
 // Лендинг — точная копия showLanding из docs/design-dev/PravoScan.dc.html.
 // Шапка и футер — в layout (SiteHeader/SiteFooter). Здесь — секции героя и ниже.
@@ -90,12 +92,6 @@ const compareRows = [
   { crit: 'Готовые код-сниппеты для исправления', us: '✓', lawyer: '—', other: '—' },
   { crit: 'Требования 2026: авторизация, cookie', us: '✓', lawyer: 'зависит от юриста', other: 'редко' },
   { crit: 'Исправим за вас под ключ', us: '✓ от 20 000 ₽', lawyer: '✓ значительно дороже', other: '—' },
-];
-
-const articles = [
-  { date: '10.07.2026', tag: '152-ФЗ', title: 'Штрафы за утечку персональных данных выросли до 15 млн ₽', teaser: 'Разбираем оборотные штрафы: кого касаются, как считается размер и почему малый бизнес — в зоне риска.' },
-  { date: '02.07.2026', tag: '149-ФЗ', title: 'Вход через Google и Apple вне закона: что делать с авторизацией в 2026', teaser: 'С 2026 года авторизация только разрешёнными способами. Что убрать и чем заменить, чтобы не получить предписание.' },
-  { date: '24.06.2026', tag: 'РКН', title: 'Роскомнадзор проверяет сайты дистанционно — без писем и предупреждений', teaser: 'Наблюдение без взаимодействия: как робот РКН находит нарушения и как узнать о них раньше проверяющих.' },
 ];
 
 const laws = [
@@ -291,8 +287,8 @@ export default function Home() {
         <Eyebrow>Блог</Eyebrow>
         <h2 style={{ ...h2Style, textTransform: 'uppercase' }}>Штрафы растут — узнавайте первыми</h2>
         <div style={{ marginTop: 48, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, textAlign: 'left' }}>
-          {articles.map((a) => (
-            <div key={a.title} style={{ ...glassCard, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {articles.slice(0, 3).map((a) => (
+            <Link key={a.slug} href={`/blog/${a.slug}`} className="hover-lift" style={{ ...glassCard, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ borderRadius: 10, background: 'rgba(17,21,44,0.6)', boxShadow: 'rgba(186,215,247,0.1) 0px 0px 0px 1px inset, rgba(6,8,18,0.55) 0px 12px 28px -6px', overflow: 'hidden' }}>
                 <svg width="100%" height="96" viewBox="0 0 320 96" fill="none">
                   <g stroke="rgba(186,215,247,0.15)" strokeWidth="1.5" fill="none"><path d="M0 34 H112 M0 62 H112 M320 34 H208 M320 62 H208" /></g>
@@ -312,7 +308,7 @@ export default function Home() {
               <div style={{ fontSize: 18, fontWeight: 700, color: '#d8ecf8', lineHeight: 1.4 }}>{a.title}</div>
               <div style={{ fontSize: 15, color: '#9da7ba' }}>{a.teaser}</div>
               <span style={{ color: '#b6d9fc', fontSize: 15 }}>Читать →</span>
-            </div>
+            </Link>
           ))}
         </div>
       </section>

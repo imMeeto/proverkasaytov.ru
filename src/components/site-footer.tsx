@@ -7,9 +7,9 @@ import { LeadCapture } from '@/components/lead-capture';
 const serviceLinks = [
   { label: 'Проверить сайт', href: '/#scan' },
   { label: 'Что проверяем', href: '/#laws' },
-  { label: 'Блог', href: '/#blog' },
+  { label: 'Блог', href: '/blog' },
   { label: 'Вопросы и ответы', href: '/#pricing' },
-  { label: 'Пример отчёта', href: '/#pricing' },
+  { label: 'Пример отчёта', href: '/example' },
 ];
 
 const docLinks = [

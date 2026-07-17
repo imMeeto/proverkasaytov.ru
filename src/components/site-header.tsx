@@ -1,17 +1,21 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 // Шапка — точная копия header из docs/design-dev/PravoScan.dc.html (строки 44-57).
-// Пункты навигации из макета (главная/блог/оплата/пример полного отчёта). Пока экраны
-// блога/оплаты/отчёта-примера не построены — ведём на секции лендинга (якоря).
+// Пункты навигации из макета ведут на реальные экраны.
 
 const nav = [
-  { label: 'Главная', href: '/', active: true },
-  { label: 'Блог', href: '/#blog', active: false },
-  { label: 'Оплата', href: '/#pricing', active: false },
-  { label: 'Пример полного отчёта', href: '/#pricing', active: false },
+  { label: 'Главная', href: '/' },
+  { label: 'Блог', href: '/blog' },
+  { label: 'Оплата', href: '/pay' },
+  { label: 'Пример полного отчёта', href: '/example' },
 ];
 
 export function SiteHeader() {
+  const pathname = usePathname();
+  const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
   return (
     <header
       style={{
@@ -72,23 +76,26 @@ export function SiteHeader() {
         </span>
       </Link>
       <nav style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-        {nav.map((n) => (
-          <Link
-            key={n.label}
-            href={n.href}
-            style={{
-              borderRadius: 999,
-              background: n.active ? 'rgba(102,58,243,0.35)' : 'transparent',
-              color: n.active ? '#ffffff' : '#9da7ba',
-              fontSize: 15,
-              fontWeight: 500,
-              padding: '7px 14px',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {n.label}
-          </Link>
-        ))}
+        {nav.map((n) => {
+          const active = isActive(n.href);
+          return (
+            <Link
+              key={n.label}
+              href={n.href}
+              style={{
+                borderRadius: 999,
+                background: active ? 'rgba(102,58,243,0.35)' : 'transparent',
+                color: active ? '#ffffff' : '#9da7ba',
+                fontSize: 15,
+                fontWeight: 500,
+                padding: '7px 14px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {n.label}
+            </Link>
+          );
+        })}
       </nav>
     </header>
   );
