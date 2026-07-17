@@ -1,15 +1,42 @@
 @import "tailwindcss";
 
 /*
-  Дизайн-система «Проверки сайтов».
-  Полностью адаптирована из docs/design-dev (AuthKit «Frosted glass cathedral at midnight»):
-  тёмный canvas, фростед-стеклянные поверхности, blueprint-сетка, единственный акцент — фиолетовый.
-  Тема одна (тёмная), без переключателя — см. project-doc-decisions.
+  Дизайн-система «Проверки сайтов» — точная копия docs/design-dev/PravoScan.dc.html.
+  Фон #161b36, фростед-стекло, blueprint-сетка, акцент — фиолетовый #663af3.
+  Шрифты self-hosted (CLAUDE.md §1 — Google Fonts запрещены): Affect (тело),
+  Dela Gothic One (заголовки/логотип), JetBrains Mono (моно/eyebrow) через @fontsource.
 */
+
+/* ===== Self-hosted шрифты дизайна (файлы в /public/fonts) ===== */
+@font-face {
+  font-family: 'Dela Gothic One';
+  src: url('/fonts/DelaGothicOne-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Affect';
+  src: url('/fonts/affect.otf') format('opentype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Affect';
+  src: url('/fonts/affect_bold.otf') format('opentype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Affect';
+  src: url('/fonts/affect_light.otf') format('opentype');
+  font-weight: 300;
+  font-display: swap;
+}
 
 @theme {
   /* ===== Цвета ===== */
-  --color-midnight-canvas: #05060f;
+  --color-midnight-canvas: #161b36;
+  --color-card-deep: #11152c;
   --color-steel-plate: #2f343e;
   --color-fog-veil: #9da7ba;
   --color-moon-mist: #c7d3ea;
@@ -17,6 +44,7 @@
   --color-ice-highlight: #d8ecf8;
   --color-pure-white: #ffffff;
   --color-void-violet: #663af3;
+  --color-void-violet-hover: #744ef5;
   --color-blueprint-blue: #b6d9fc;
   --color-ember-glow: #e46d4c;
   --color-signal-blue: #027dea;
@@ -28,10 +56,12 @@
   --color-verdict-yellow: #e0b341;
   --color-verdict-red: #e46d4c;
 
-  /* ===== Типографика (self-hosted через @fontsource-variable, импорт в layout.tsx) ===== */
-  --font-untitled-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-aeonikpro: 'Space Grotesk Variable', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* ===== Типографика (self-hosted) ===== */
+  --font-untitled-sans: 'Affect', 'Inter Variable', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-aeonikpro: 'Dela Gothic One', 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
   --font-dotdigital: 'JetBrains Mono Variable', ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-affect: var(--font-untitled-sans);
+  --font-dela: var(--font-aeonikpro);
   --font-sans: var(--font-untitled-sans);
   --font-mono: var(--font-dotdigital);
 
@@ -42,12 +72,10 @@
   --text-body-sm--line-height: 1.43;
   --text-body: 16px;
   --text-body--line-height: 1.5;
-  --text-body--letter-spacing: -0.16px;
   --text-subheading: 18px;
   --text-subheading--line-height: 1.33;
   --text-heading-sm: 24px;
   --text-heading-sm--line-height: 1.17;
-  --text-heading-sm--letter-spacing: -0.24px;
   --text-heading: 28px;
   --text-heading--line-height: 1.14;
   --text-heading-lg: 44px;
@@ -80,15 +108,15 @@
   --radius-full: 999px;
   --radius-cards: 16px;
   --radius-badges: 6px;
-  --radius-inputs: 6px;
+  --radius-inputs: 8px;
   --radius-buttons: 999px;
 
   /* ===== Тени / свечения ===== */
   --shadow-sm: rgba(186, 207, 247, 0.32) 0px 0px 6px 0px;
   --shadow-md: rgba(238, 186, 247, 0.24) 0px 0px 12px 0px;
-  --shadow-hairline: rgba(186, 215, 247, 0.12) 0px 0px 0px 1px inset;
-  --shadow-feature: rgba(199, 211, 234, 0.12) 0px 1px 1px 0px inset, rgba(199, 211, 234, 0.05) 0px 24px 48px 0px inset, rgba(6, 6, 14, 0.7) 0px 24px 32px 0px;
-  --shadow-modal: rgba(216, 236, 248, 0.2) 0px 1px 1px 0px inset, rgba(168, 216, 245, 0.06) 0px 24px 48px 0px inset, rgba(0, 0, 0, 0.3) 0px 16px 32px 0px;
+  --shadow-hairline: rgba(186, 215, 247, 0.17) 0px 0px 0px 1px inset;
+  --shadow-feature: rgba(216, 236, 248, 0.14) 0px 1px 1px 0px inset, rgba(186, 215, 247, 0.17) 0px 0px 0px 1px inset, rgba(0, 0, 0, 0.5) 0px 20px 40px -14px;
+  --shadow-modal: rgba(216, 236, 248, 0.22) 0px 1px 1px 0px inset, rgba(168, 216, 245, 0.08) 0px 24px 48px 0px inset, rgba(186, 215, 247, 0.16) 0px 0px 0px 1px inset, rgba(0, 0, 0, 0.55) 0px 24px 48px 0px, rgba(102, 58, 243, 0.15) 0px 0px 64px 0px;
 
   /* Слои */
   --page-max-width: 1200px;
@@ -109,48 +137,55 @@
     background-color: var(--color-midnight-canvas);
     color: var(--color-frost-glow);
     font-family: var(--font-untitled-sans);
-    font-size: var(--text-body);
+    font-size: 18px;
     line-height: 1.5;
-    letter-spacing: -0.16px;
+    letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
   }
 
-  /* Blueprint-сетка на весь экран, гаснет к краям */
+  /* Blueprint-сетка на весь экран, гаснет к краям (эталон: 0.07 / 80px) */
   body::before {
     content: "";
     position: fixed;
     inset: 0;
     z-index: -2;
     background-image:
-      linear-gradient(to right, rgba(186, 215, 247, 0.06) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(186, 215, 247, 0.06) 1px, transparent 1px);
-    background-size: 88px 88px;
-    -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 10%, transparent 80%);
-    mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 10%, transparent 80%);
+      linear-gradient(rgba(186, 215, 247, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(186, 215, 247, 0.07) 1px, transparent 1px);
+    background-size: 80px 80px;
+    -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 30%, transparent 100%);
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 30%, transparent 100%);
     pointer-events: none;
   }
 
-  /* Конический spotlight-ореол сверху */
+  /* Радиальный spotlight-ореол сверху */
   body::after {
     content: "";
     position: fixed;
-    inset: 0;
+    top: -300px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 900px;
+    height: 600px;
     z-index: -1;
-    background: radial-gradient(ellipse 900px 460px at 50% -12%, rgba(124, 145, 182, 0.28), transparent 62%);
+    background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(124, 145, 182, 0.3) 0%, transparent 70%);
     pointer-events: none;
   }
 
   h1, h2, h3 {
     font-family: var(--font-aeonikpro);
-    font-weight: 500;
+    font-weight: 400;
     color: var(--color-ice-highlight);
-    letter-spacing: normal;
   }
 
   a {
     color: var(--color-frost-glow);
     text-decoration: none;
+  }
+  a:hover {
+    color: var(--color-pure-white);
   }
 
   ::selection {
@@ -167,25 +202,23 @@
   /* Фростед-стеклянная карточка (feature) */
   .glass-card {
     border-radius: var(--radius-cards);
-    background: rgba(186, 214, 247, 0.03);
+    background: linear-gradient(180deg, rgba(186, 214, 247, 0.075), rgba(186, 214, 247, 0.028));
     box-shadow: var(--shadow-feature);
     padding: 24px;
   }
 
-  /* Приподнятая «модальная» поверхность (форма скана, карточки отчёта) */
+  /* Приподнятая «модальная» поверхность (форма скана, ключевые карточки) */
   .glass-modal {
     border-radius: var(--radius-cards);
-    background: rgba(5, 6, 15, 0.72);
+    background: rgba(17, 21, 44, 0.97);
     box-shadow: var(--shadow-modal);
-    backdrop-filter: blur(12px);
   }
 
-  /* Универсальный hairline-бордер (не сплошной штрих) */
   .hairline {
     box-shadow: var(--shadow-hairline);
   }
 
-  /* Eyebrow-лейбл секции */
+  /* Eyebrow-лейбл секции — трекнутые капсы JetBrains Mono */
   .eyebrow {
     font-family: var(--font-dotdigital);
     font-size: 15px;
@@ -196,11 +229,20 @@
     font-feature-settings: "tnum" on;
   }
 
-  /* Skywash-градиент для крупных заголовков и wordmark */
+  /* Skywash-градиент для крупных заголовков и wordmark (эталон: 180deg) */
   .text-skywash {
-    background: linear-gradient(0deg, #d8ecf8 0%, #98c0ef 100%);
+    background: linear-gradient(180deg, #d8ecf8 0%, #98c0ef 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+    -webkit-text-fill-color: transparent;
   }
 }
+
+/* ===== Анимации из эталона ===== */
+@keyframes spinSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes pulseGlow { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes blinkDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+@keyframes traceFlow { from { stroke-dashoffset: 300; } to { stroke-dashoffset: 0; } }
+@keyframes inputPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(102,58,243,0); } 50% { box-shadow: 0 0 24px 3px rgba(102,58,243,0.3); } }
