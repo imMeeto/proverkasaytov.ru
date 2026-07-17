@@ -60,9 +60,20 @@ export function isPrivateIPv6(ip: string): boolean {
   const s = ip.toLowerCase().split('%')[0]; // отбросить zone id (fe80::1%eth0)
   if (s === '::' || s === '::1') return true;
 
-  // IPv4-mapped (::ffff:10.0.0.1) и IPv4-compatible — проверяем как IPv4.
+  // IPv4-mapped (::ffff:10.0.0.1) и IPv4-compatible в точечной форме.
   const mapped = s.match(/^::(?:ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/);
   if (mapped) return isPrivateIPv4(mapped[1]);
+
+  // КРИТИЧНО: WHATWG-парсер URL сериализует встроенный IPv4 в HEX-форму —
+  // new URL('http://[::ffff:169.254.169.254]/').hostname === '::ffff:a9fe:a9fe'.
+  // Разбираем два младших хекстета в IPv4 и проверяем как IPv4, иначе mapped-адрес
+  // (в т.ч. cloud metadata 169.254.169.254) обходит фильтр на всех трёх слоях.
+  const hexMapped = s.match(/^::(?:ffff:)?([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (hexMapped) {
+    const hi = parseInt(hexMapped[1], 16);
+    const lo = parseInt(hexMapped[2], 16);
+    return isPrivateIPv4(`${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`);
+  }
 
   const head = s.startsWith('::') ? 0 : parseInt(s.split(':')[0] || '', 16);
   if (Number.isNaN(head)) return true;

@@ -126,7 +126,11 @@ async function crawlPage(
   });
 
   try {
-    const res = await page.goto(url, { waitUntil: 'networkidle', timeout: PAGE_TIMEOUT_MS });
+    // domcontentloaded надёжен; networkidle желателен (добираем ленивые трекеры для D3),
+    // но на сайтах с long-poll/websocket не наступает — ждём его лучшими усилиями,
+    // не проваливая живую страницу в status 0.
+    const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: PAGE_TIMEOUT_MS });
+    await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => {});
     await page.waitForTimeout(SETTLE_MS);
 
     // Редирект мог увести на чужой хост — проверяем конечный URL (ПС-08 §3).
@@ -164,6 +168,7 @@ export async function crawlSite(
   targetUrl: string,
   domain: string,
   onProgress: CrawlProgress,
+  signal?: AbortSignal,
 ): Promise<Omit<ScanContext, 'rkn' | 'hostingRegistry' | 'innFound'>> {
   const hostname = new URL(targetUrl).hostname;
 
@@ -189,7 +194,9 @@ export async function crawlSite(
   try {
     // Главная — всегда первая: её ссылки нужны для выбора остальных страниц.
     const home = await crawlPage(context, targetUrl, network);
-    if (home.status === 0 || home.status >= 500) {
+    // Недоступна главная (ПС-04 §3): нет ответа, 5xx, либо антибот/ошибка 4xx (403/429/404).
+    // Скорить чеки по challenge-заглушке нельзя.
+    if (home.status === 0 || home.status >= 400) {
       throw new CrawlFatalError('site_unreachable');
     }
     pages.push(home);
@@ -211,6 +218,7 @@ export async function crawlSite(
     const pause = robots.crawlDelayMs ?? POLITE_PAUSE_MS;
     let i = 1;
     for (const url of rest) {
+      if (signal?.aborted) break; // глобальный таймаут — прекращаем обход, finally закроет контекст
       i++;
       await onProgress({ stage: 'crawl', i, total, page: url, message: `Обхожу страницу ${i} из ${total}` });
       await sleep(pause); // параллельно страницы одного сайта не грузим (ПС-08 §6)

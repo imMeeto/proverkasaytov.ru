@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isForbiddenHostname, isPrivateIPv4, isPrivateIPv6, isPrivateIp } from './ssrf';
+import { isForbiddenHostname, isPrivateIPv4, isPrivateIPv6, isPrivateIp, assertPublicUrl } from './ssrf';
 import { checkKii } from './kii';
 import { maskEmail, maskPii } from './pii';
 
@@ -54,6 +54,43 @@ describe('ssrf: приватные IPv6', () => {
   it('пропускает публичные', () => {
     expect(isPrivateIPv6('2001:4860:4860::8888')).toBe(false);
     expect(isPrivateIPv6('::ffff:8.8.8.8')).toBe(false);
+  });
+
+  // Регрессия: WHATWG-URL сериализует встроенный IPv4 в HEX — обход SSRF (аудит 07.2026).
+  it('блокирует IPv4-mapped в hex-форме (как отдаёт new URL)', () => {
+    expect(isPrivateIPv6('::ffff:a9fe:a9fe')).toBe(true); // 169.254.169.254 metadata
+    expect(isPrivateIPv6('::ffff:a00:1')).toBe(true); // 10.0.0.1
+    expect(isPrivateIPv6('::ffff:7f00:1')).toBe(true); // 127.0.0.1
+    expect(isPrivateIPv6('::ffff:c0a8:1')).toBe(true); // 192.168.0.1
+  });
+
+  it('пропускает публичный IPv4-mapped в hex-форме', () => {
+    expect(isPrivateIPv6('::ffff:808:808')).toBe(false); // 8.8.8.8
+  });
+});
+
+describe('ssrf: assertPublicUrl (шлюз API и воркера)', () => {
+  it('отклоняет не-http(s) схемы', async () => {
+    expect((await assertPublicUrl('ftp://example.ru')).ok).toBe(false);
+  });
+
+  it('отклоняет credentials в URL', async () => {
+    expect((await assertPublicUrl('http://user:pass@example.ru')).ok).toBe(false);
+  });
+
+  it('отклоняет нестандартный порт', async () => {
+    expect((await assertPublicUrl('http://example.ru:8080')).ok).toBe(false);
+  });
+
+  it('отклоняет приватный IP-литерал', async () => {
+    expect((await assertPublicUrl('http://127.0.0.1')).ok).toBe(false);
+    expect((await assertPublicUrl('http://169.254.169.254/latest/meta-data/')).ok).toBe(false);
+    expect((await assertPublicUrl('http://192.168.1.1')).ok).toBe(false);
+  });
+
+  // Ключевая регрессия: hex-mapped literal должен отклоняться на шлюзе.
+  it('отклоняет IPv4-mapped IPv6 в hex-форме (cloud metadata через литерал)', async () => {
+    expect((await assertPublicUrl('http://[::ffff:a9fe:a9fe]/')).ok).toBe(false);
   });
 });
 
@@ -125,6 +162,7 @@ describe('pii: маскировка', () => {
     expect(maskPii('+7 999 123-45-67')).toBe(masked);
     expect(maskPii('8(999)1234567')).toBe(masked);
     expect(maskPii('+79991234567')).toBe(masked);
+    expect(maskPii('+7.495.123.45.67')).toBe(masked); // точечная запись (аудит 07.2026)
     expect(maskPii('Телефон: 8 999 123 45 67, звоните')).toBe(`Телефон: ${masked}, звоните`);
   });
 

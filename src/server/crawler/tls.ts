@@ -71,8 +71,15 @@ export function inspectCertificate(hostname: string): Promise<SslInfo> {
   });
 }
 
-/** Отвечает ли http:// редиректом на https:// (требование чека A1). */
-export async function checkHttpRedirect(hostname: string, userAgent: string): Promise<boolean> {
+/**
+ * Отвечает ли http:// редиректом на https:// (требование чека A1).
+ * reachable различает «http доступен, но без редиректа» (нарушение) и «порт 80 закрыт»
+ * (HTTPS-only — НЕ нарушение), чтобы не давать ложный fail безопасной конфигурации.
+ */
+export async function checkHttpRedirect(
+  hostname: string,
+  userAgent: string,
+): Promise<{ redirects: boolean; reachable: boolean }> {
   try {
     const res = await fetch(`http://${hostname}/`, {
       method: 'HEAD',
@@ -82,26 +89,29 @@ export async function checkHttpRedirect(hostname: string, userAgent: string): Pr
     });
     if (res.status >= 300 && res.status < 400) {
       const loc = res.headers.get('location') ?? '';
-      if (loc.startsWith('https://')) return true;
-      // Относительный редирект не меняет схему — значит https не гарантирован.
-      if (loc.startsWith('/')) return false;
-      try {
-        return new URL(loc).protocol === 'https:';
-      } catch {
-        return false;
+      let redirects = false;
+      if (loc.startsWith('https://')) redirects = true;
+      else if (loc.startsWith('/')) redirects = false; // относительный редирект схему не меняет
+      else {
+        try {
+          redirects = new URL(loc).protocol === 'https:';
+        } catch {
+          redirects = false;
+        }
       }
+      return { redirects, reachable: true };
     }
-    return false;
+    return { redirects: false, reachable: true };
   } catch {
-    return false;
+    return { redirects: false, reachable: false }; // ECONNREFUSED/timeout — http недоступен
   }
 }
 
 /** Шаг 1 пайплайна: полная TLS-картина сайта. */
 export async function collectSsl(hostname: string, userAgent: string): Promise<SslInfo> {
-  const [cert, redirects] = await Promise.all([
+  const [cert, http] = await Promise.all([
     inspectCertificate(hostname),
     checkHttpRedirect(hostname, userAgent),
   ]);
-  return { ...cert, redirectsToHttps: redirects };
+  return { ...cert, redirectsToHttps: http.redirects, httpReachable: http.reachable };
 }

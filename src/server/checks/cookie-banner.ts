@@ -8,7 +8,10 @@ const CMP_CLASS_RE = /cookiescript|cookie-consent|cookieconsent|cookie-banner|co
 
 // Текстовая эвристика: рядом должны быть и слово про куки, и кнопка принятия.
 const COOKIE_WORD_RE = /cookie|куки|cookies/i;
-const ACCEPT_BTN_RE = /принять|принимаю|соглас|разрешить|ок\b|хорошо|accept|allow/i;
+// Только кнопочные формы согласия. Пассивное «вы соглашаетесь» (implied-consent) не считается
+// баннером, поэтому bare `соглас` убрано (оно матчило «соглашаетесь»). `ок` — с явными
+// границами: `\b` на кириллице не срабатывает.
+const ACCEPT_BTN_RE = /принять|принима|разрешить|согласен|соглашаюсь|хорошо|понятно|accept|allow|(^|\s)ок(\s|$)/i;
 
 /** Ищем блок баннера: сначала по классам CMP, затем по связке «куки + кнопка». */
 function hasBanner(html: string, text: string): boolean {

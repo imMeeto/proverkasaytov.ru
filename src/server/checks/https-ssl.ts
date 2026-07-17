@@ -33,7 +33,9 @@ export const httpsSsl: CheckDefinition = {
           : 'Сертификат недействителен или цепочка не построена';
       return { status: 'fail', evidence: ev(why) };
     }
-    if (!ssl.redirectsToHttps) {
+    // HTTPS-only (порт 80 закрыт, httpReachable=false) — не нарушение.
+    // Fail только если http РЕАЛЬНО доступен и не редиректит на https.
+    if (ssl.httpReachable !== false && !ssl.redirectsToHttps) {
       return {
         status: 'fail',
         evidence: ev('Сайт открывается по http:// без переадресации на https://'),

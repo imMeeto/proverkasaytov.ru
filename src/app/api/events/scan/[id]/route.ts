@@ -41,6 +41,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         }
       };
 
+      // Подписываемся ДО чтения БД: иначе терминальное событие, опубликованное в окне
+      // между SELECT и подпиской, потеряется, и клиент зависнет на прогрессе.
+      unsub = subscribeScan(id, (event) => {
+        send(event);
+        if (event.stage === 'done' || event.stage === 'failed') {
+          cleanup();
+        }
+      });
+
       // Текущий статус из БД — чтобы клиент, подключившийся после завершения, всё равно получил финал.
       const current = await db.query.scans.findFirst({ where: eq(scans.id, id) });
       if (!current) {
@@ -48,14 +57,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         cleanup();
         return;
       }
-      send({ stage: current.status as ScanStage, score: current.score ?? undefined });
 
-      unsub = subscribeScan(id, (event) => {
-        send(event);
-        if (event.stage === 'done' || event.stage === 'failed') {
-          cleanup();
-        }
-      });
+      // 'running' отсутствует в ScanStage — маппим в осмысленную стадию обхода.
+      const stage: ScanStage = current.status === 'running' ? 'crawl' : current.status;
+      send({ stage, score: current.score ?? undefined });
 
       if (current.status === 'done' || current.status === 'failed') {
         cleanup();

@@ -366,6 +366,112 @@ describe('реестр', () => {
     expect(runChecks(ctx())).toHaveLength(6);
   });
 
+  it('C1 маскирует телефон в тексте чекбокса (не только email)', () => {
+    const r = formsConsentCheckbox.run(
+      ctx({
+        pages: [
+          page({
+            forms: [
+              form({ checkboxes: [{ checked: true, text: 'Согласен на обработку ПДн, тел. 8 999 123 45 67', name: 'c' }] }),
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(r.evidence[0].detail).toContain('+7 *** *** ** **');
+    expect(r.evidence[0].detail).not.toContain('999 123 45 67');
+  });
+});
+
+// Регрессии из аудита 07.2026 — анти-false-positive и граничные случаи.
+describe('аудит: анти-false-positive', () => {
+  it('C1: форма логина (username+password) — не ПДн-форма', () => {
+    const r = formsConsentCheckbox.run(
+      ctx({
+        pages: [
+          page({
+            forms: [
+              form({
+                selector: 'form#login',
+                fields: [
+                  { name: 'username', type: 'text', placeholder: 'Логин' },
+                  { name: 'password', type: 'password', placeholder: 'Пароль' },
+                ],
+                checkboxes: [],
+                innerText: 'Вход в личный кабинет',
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(r.status).toBe('not_applicable');
+  });
+
+  it('C1: лид-форма с «найдите тур» и полем tel — остаётся ПДн-формой (fail без чекбокса)', () => {
+    const r = formsConsentCheckbox.run(
+      ctx({
+        pages: [
+          page({
+            forms: [
+              form({
+                selector: 'form.tour',
+                innerText: 'Найдите тур — оставьте заявку',
+                fields: [
+                  { name: 'name', type: 'text', placeholder: 'Имя' },
+                  { name: 'phone', type: 'tel', placeholder: '+7' },
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(r.status).toBe('fail');
+  });
+
+  it('B1: политика-болванка (404) + длинная посторонняя /return-policy без ПДн-маркеров → fail', () => {
+    const r = privacyPolicyExists.run(
+      ctx({
+        pages: [
+          page({ links: [{ href: 'https://example.ru/privacy', anchor: 'Политика конфиденциальности' }] }),
+          page({ url: 'https://example.ru/privacy', status: 404, text: 'Скоро' }),
+          page({ url: 'https://example.ru/return-policy', text: 'Условия возврата товара надлежащего качества. '.repeat(40) }),
+        ],
+      }),
+    );
+    expect(r.status).toBe('fail');
+  });
+
+  it('A1: HTTPS-only сайт (порт 80 закрыт) — не fail', () => {
+    const r = httpsSsl.run(ctx({ ssl: okSsl({ httpReachable: false, redirectsToHttps: false }) }));
+    expect(r.status).toBe('pass');
+  });
+
+  it('D1: пассивная фраза «вы соглашаетесь с cookie» без кнопки → не баннер (warn)', () => {
+    const r = cookieBanner.run(
+      ctx({ pages: [page({ text: 'Используя сайт, вы соглашаетесь с использованием файлов cookie.' })] }),
+    );
+    expect(r.status).toBe('warn');
+  });
+
+  it('словарь трекеров: порядок реально важен (mc.yandex.ru/ads → Метрика, не Реклама)', () => {
+    // URL матчит и Метрику (mc.yandex.ru), и Рекламу (yandex.ru + /ads) — решает порядок массива.
+    expect(matchTracker('https://mc.yandex.ru/ads')?.name).toBe('Яндекс.Метрика');
+  });
+
+  it('скоринг: ячейка warn/major и смешанная сумма', () => {
+    expect(penaltyFor('warn', 'major')).toBe(3);
+    expect(
+      computeScore([
+        { status: 'fail', severity: 'critical' }, // -14
+        { status: 'warn', severity: 'minor' }, // -1
+        { status: 'pass', severity: 'major' }, // 0
+        { status: 'unable', severity: 'critical' }, // 0
+      ]),
+    ).toBe(85);
+  });
+
   it('падение одного чека не роняет скан — деградирует в unable', () => {
     const broken = { ...httpsSsl, run: () => { throw new Error('bang'); } };
     const original = CHECKS[0];

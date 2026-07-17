@@ -83,6 +83,8 @@ export type SslInfo = {
   /** Сертификат валиден и цепочка построена. */
   valid: boolean;
   httpsReachable: boolean;
+  /** Отвечает ли сайт по http:// вообще. false = порт 80 закрыт (HTTPS-only, не нарушение). */
+  httpReachable?: boolean;
   /** Редиректит ли http:// на https://. */
   redirectsToHttps: boolean;
   validTo?: string;

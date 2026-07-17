@@ -7,6 +7,9 @@ import { logger } from '@/lib/logger';
 import { BOT_USER_AGENT } from '@/lib/site';
 import { assertPublicUrl } from '@/server/security/ssrf';
 import { checkKii } from '@/server/security/kii';
+import { maskPii } from '@/server/security/pii';
+import type { Evidence } from '@/server/db/types';
+import type { CheckRun } from '@/server/checks/registry';
 import { runChecks } from '@/server/checks/registry';
 import { computeScore } from '@/server/checks/scoring';
 import type { ScanContext } from '@/server/checks/types';
@@ -19,6 +22,7 @@ const FATAL_MESSAGES: Record<string, string> = {
   site_unreachable: 'Сайт не отвечает. Проверьте адрес и доступность сайта.',
   robots_disallow: 'Сайт запрещает автоматический обход в robots.txt.',
   unsafe_redirect: 'Сайт переадресует во внутреннюю сеть — проверка остановлена.',
+  scan_timeout: 'Проверка заняла слишком долго и была остановлена. Попробуйте позже.',
 };
 
 function fatalMessage(raw: string): string {
@@ -28,8 +32,35 @@ function fatalMessage(raw: string): string {
   return 'Не удалось проверить сайт.';
 }
 
-/** Ошибка, после которой ретраить бессмысленно (сайт мёртв, robots запрещает). */
+/** Ошибка, после которой ретраить бессмысленно (сайт мёртв, robots запрещает, таймаут). */
 export class ScanRejected extends Error {}
+
+// Централизованный гейт маскировки (ПС-08 §8.3): любой текст с чужого сайта проходит
+// через maskPii ДО записи в БД. Дисциплину отдельных чеков не считаем достаточной.
+function sanitizeEvidence(runs: CheckRun[]): Evidence[][] {
+  return runs.map((r) =>
+    r.result.evidence.map((e): Evidence => {
+      const extra = e.extra
+        ? Object.fromEntries(
+            Object.entries(e.extra).map(([k, v]) => [k, typeof v === 'string' ? maskPii(v) : v]),
+          )
+        : undefined;
+      return { ...e, detail: maskPii(e.detail), extra };
+    }),
+  );
+}
+
+/** URL для scans.meta без query/hash — query-строка «?name=…&phone=…» это вектор ПДн. */
+function stripUrlParams(url: string): string {
+  try {
+    const u = new URL(url);
+    u.search = '';
+    u.hash = '';
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
 
 export async function runScanPipeline(scanId: string): Promise<void> {
   const scan = await db.query.scans.findFirst({ where: eq(scans.id, scanId) });
@@ -57,9 +88,14 @@ export async function runScanPipeline(scanId: string): Promise<void> {
     if (kii.blocked) throw new ScanRejected('kii_blocked');
 
     // ---- Шаги 1–3: обход (с глобальным таймаутом) ----
+    // По таймауту отменяем обход через AbortSignal → crawlSite прерывает цикл и
+    // закрывает контекст браузера в finally (ПС-04 §1). scan_timeout терминален —
+    // ретрай поверх недозавершённого обхода не запускаем.
+    const controller = new AbortController();
     const crawled = await withTimeout(
-      crawlSite(scan.url, scan.domain, publish),
+      crawlSite(scan.url, scan.domain, publish, controller.signal),
       env.SCAN_TOTAL_TIMEOUT_MS,
+      () => controller.abort(),
     );
 
     // ---- Шаг 4: реестры (Фаза 3) ----
@@ -80,15 +116,16 @@ export async function runScanPipeline(scanId: string): Promise<void> {
     await publish({ stage: 'scoring', message: 'Считаю итоговый балл' });
     const score = computeScore(runs.map((r) => ({ status: r.result.status, severity: r.check.severity })));
 
+    const sanitized = sanitizeEvidence(runs);
     await db
       .insert(checkResults)
       .values(
-        runs.map((r) => ({
+        runs.map((r, i) => ({
           scanId,
           checkId: r.check.id,
           status: r.result.status,
           severity: r.check.severity,
-          evidence: r.result.evidence,
+          evidence: sanitized[i],
         })),
       )
       // Повторный прогон перезаписывает результат (ПС-02 §4).
@@ -114,7 +151,7 @@ export async function runScanPipeline(scanId: string): Promise<void> {
         daysLeft: ctx.ssl.daysLeft,
         issuer: ctx.ssl.issuer,
       },
-      pagesCrawled: ctx.pages.map((p) => ({ url: p.url, status: p.status, ms: p.loadMs })),
+      pagesCrawled: ctx.pages.map((p) => ({ url: stripUrlParams(p.url), status: p.status, ms: p.loadMs })),
       loadMs: ctx.pages[0]?.loadMs,
       userAgentUsed: BOT_USER_AGENT,
     };
@@ -148,13 +185,17 @@ export async function runScanPipeline(scanId: string): Promise<void> {
   }
 }
 
-// Глобальный таймаут скана (ПС-04 §1): Promise.race, контекст браузера закроется в finally краулера.
-function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+// Глобальный таймаут скана (ПС-04 §1). По истечении вызываем onTimeout (отмена обхода),
+// затем реджектим терминальной ScanRejected — обход прекращается и закрывает контекст.
+function withTimeout<T>(p: Promise<T>, ms: number, onTimeout: () => void): Promise<T> {
   let timer: NodeJS.Timeout;
   return Promise.race([
     p.finally(() => clearTimeout(timer)),
     new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`scan_timeout: превышено ${ms} мс`)), ms);
+      timer = setTimeout(() => {
+        onTimeout();
+        reject(new ScanRejected('scan_timeout'));
+      }, ms);
     }),
   ]);
 }

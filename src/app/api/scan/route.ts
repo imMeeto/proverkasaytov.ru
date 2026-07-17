@@ -52,7 +52,15 @@ export async function POST(req: Request) {
   const [recent] = await db
     .select({ id: scans.id })
     .from(scans)
-    .where(and(eq(scans.domain, normalized.domain), eq(scans.status, 'done'), gt(scans.createdAt, since)))
+    .where(
+      and(
+        eq(scans.domain, normalized.domain),
+        eq(scans.status, 'done'),
+        // Только НЕоплаченные: иначе новый пользователь получил бы чужой платный отчёт.
+        eq(scans.isPaid, false),
+        gt(scans.createdAt, since),
+      ),
+    )
     .orderBy(desc(scans.createdAt))
     .limit(1);
 
