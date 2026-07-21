@@ -37,7 +37,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, maxWidth: 480, margin: '0 auto' }}>
       <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, transparent, rgba(186,215,247,0.12))' }} />
-      <span style={{ fontFamily: mono, fontSize: 15, letterSpacing: '0.1em', color: '#c7d3ea', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+      <span style={{ fontFamily: mono, fontSize: 20, letterSpacing: '0.1em', color: '#c7d3ea', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
         {children}
       </span>
       <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, rgba(186,215,247,0.12), transparent)' }} />
@@ -74,7 +74,7 @@ function Connector({ midY, left, right }: { midY: number; left: number; right: n
 }
 
 const fearFacts = [
-  { stat: 'до 15 млн ₽', text: 'штраф за утечку персональных данных для юрлиц — после ужесточения 152-ФЗ' },
+  { stat: 'Штраф до 15 млн ₽', text: 'за утечку персональных данных для юрлиц — после ужесточения 152-ФЗ' },
   { stat: 'без предупреждения', text: 'Роскомнадзор проверяет сайты дистанционно — вы узнаете о нарушении из постановления' },
   { stat: '21 пункт проверки', text: 'формы, документы, cookie, счётчики, авторизация, реквизиты, реклама — всё, к чему цепляются при проверке' },
 ];
@@ -86,7 +86,7 @@ const steps = [
 ];
 
 const compareRows = [
-  { crit: 'Цена', us: '700 ₽', lawyer: 'от 15 000 ₽', other: '~1 900 ₽' },
+  { crit: 'Цена', us: '690 ₽', lawyer: 'от 15 000 ₽', other: '~1 900 ₽' },
   { crit: 'Срок проверки', us: '30–120 секунд', lawyer: 'от недели', other: '~10 минут' },
   { crit: 'Обход в настоящем браузере', us: '✓ как живой посетитель', lawyer: '—', other: 'частично' },
   { crit: 'Готовые код-сниппеты для исправления', us: '✓', lawyer: '—', other: '—' },
@@ -233,49 +233,75 @@ export default function Home() {
       {/* ============ PRICING ============ */}
       <Connector midY={36} left={64} right={176} />
       <section id="pricing" style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px 0', textAlign: 'center', scrollMarginTop: 24 }}>
-        <Eyebrow>Цена вопроса</Eyebrow>
-        <h2 style={h2Style}>700 ₽ VS ШТРАФЫ</h2>
-        <div style={{ position: 'relative', marginTop: 48, display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', textAlign: 'left' }}>
-          {/* 0 ₽ */}
-          <div style={{ ...glassCard, flex: 1, minWidth: 280, maxWidth: 400, padding: 28 }}>
-            <div style={{ fontFamily: mono, fontSize: 14, letterSpacing: '0.1em', color: '#9da7ba', textTransform: 'uppercase' }}>Бесплатно</div>
-            <div style={{ fontFamily: dela, fontSize: 38, color: '#d8ecf8', marginTop: 12 }}>0 ₽</div>
-            <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 16, color: '#c7d3ea' }}>
+        <Eyebrow>Тарифы</Eyebrow>
+        <h2 style={h2Style}>Лучшая стоимость тарифов среди конкурентов</h2>
+        <div style={{ marginTop: 44, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, alignItems: 'center', textAlign: 'left' }}>
+          {/* Бесплатный отчёт */}
+          <div style={{ position: 'relative', borderRadius: 16, background: 'linear-gradient(180deg, rgba(186,214,247,0.075), rgba(186,214,247,0.028))', boxShadow: 'rgba(216,236,248,0.14) 0px 1px 1px 0px inset, rgba(186,215,247,0.17) 0px 0px 0px 1px inset, rgba(0,0,0,0.5) 0px 20px 40px -14px', padding: '22px 24px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontFamily: mono, fontSize: 14, letterSpacing: '0.1em', color: '#9da7ba', textTransform: 'uppercase' }}>Бесплатный отчёт</div>
+            <div style={{ fontFamily: dela, fontSize: 30, fontWeight: 400, color: '#d8ecf8', marginTop: 10 }}>0 ₽</div>
+            <div style={{ marginTop: 8 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 6, background: 'rgba(228,109,76,0.12)', boxShadow: 'rgba(228,109,76,0.3) 0px 0px 0px 1px inset', color: '#e46d4c', fontSize: 14, fontWeight: 700, padding: '4px 10px' }}>⚠ Показывает 2 из 21 пункта проверки</span>
+            </div>
+            <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 16, color: '#c7d3ea' }}>
               <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>Балл риска из 100</span></div>
               <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>Счётчики: нарушения / замечания / выполнено</span></div>
-              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>2 самых критичных нарушения полностью</span></div>
-              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#9da7ba' }}>·</span><span style={{ color: '#9da7ba' }}>Остальные — только заголовки</span></div>
+              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>2 самых критичных нарушения полностью с описанием</span></div>
+              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#9da7ba' }}>·</span><span style={{ color: '#9da7ba' }}>Остальные 19 пунктов — только названия проблем</span></div>
+            </div>
+            <div style={{ marginTop: 'auto', paddingTop: 20 }}>
+              <Link href="/#scan" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 48, borderRadius: 999, background: 'rgba(186,214,247,0.06)', boxShadow: 'rgba(186,215,247,0.16) 0px 0px 0px 1px inset', color: '#ffffff', fontFamily: 'inherit', fontSize: 17, fontWeight: 500 }}>Проверить бесплатно</Link>
             </div>
           </div>
-          {/* 700 ₽ */}
-          <div style={{ ...glassCard, flex: 1, minWidth: 280, maxWidth: 400, padding: 28 }}>
-            <div style={{ fontFamily: mono, fontSize: 14, letterSpacing: '0.1em', color: '#c7d3ea', textTransform: 'uppercase' }}>Полный отчёт</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 12 }}>
-              <div style={{ ...skywash, fontFamily: dela, fontSize: 38 }}>700 ₽</div>
-              <div style={{ fontSize: 16, color: '#9da7ba', textDecoration: 'line-through' }}>1 900 ₽ у конкурентов</div>
+          {/* 690 ₽ — центральная premium */}
+          <div style={{ position: 'relative', borderRadius: 16, background: 'rgba(17,21,44,0.97)', boxShadow: 'rgba(216,236,248,0.22) 0px 1px 1px 0px inset, rgba(168,216,245,0.08) 0px 24px 48px 0px inset, rgba(186,215,247,0.16) 0px 0px 0px 1px inset, rgba(0,0,0,0.55) 0px 24px 48px 0px', padding: '26px 28px' }}>
+            <span style={{ position: 'absolute', top: -2, left: -2, width: 4, height: 4, borderRadius: 9999, background: '#d8ecf8', opacity: 0.5, boxShadow: '0 0 6px rgba(216,236,248,0.9)' }} />
+            <span style={{ position: 'absolute', top: -2, right: -2, width: 4, height: 4, borderRadius: 9999, background: '#d8ecf8', opacity: 0.5, boxShadow: '0 0 6px rgba(216,236,248,0.9)' }} />
+            <span style={{ position: 'absolute', bottom: -2, left: -2, width: 4, height: 4, borderRadius: 9999, background: '#d8ecf8', opacity: 0.5, boxShadow: '0 0 6px rgba(216,236,248,0.9)' }} />
+            <span style={{ position: 'absolute', bottom: -2, right: -2, width: 4, height: 4, borderRadius: 9999, background: '#d8ecf8', opacity: 0.5, boxShadow: '0 0 6px rgba(216,236,248,0.9)' }} />
+            <h2 style={{ fontFamily: dela, fontWeight: 400, fontSize: 'clamp(20px, 2.4vw, 26px)', lineHeight: 1.08, color: '#d8ecf8', textTransform: 'uppercase', margin: '16px 0 0' }}>Узнайте все нарушения — пока их не нашёл Роскомнадзор</h2>
+            <div style={{ fontFamily: mono, fontSize: 14, letterSpacing: '0.1em', color: '#9da7ba', textTransform: 'uppercase', marginTop: 10 }}>Полный отчёт · доступ навсегда</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginTop: 18, flexWrap: 'wrap' }}>
+              <div style={{ ...skywash, fontFamily: dela, fontSize: 46, fontWeight: 400, lineHeight: 1 }}>690 ₽</div>
+              <div style={{ fontSize: 18, color: '#9da7ba', textDecoration: 'line-through' }}>1 900 ₽</div>
+              <span style={{ borderRadius: 6, background: 'rgba(38,150,132,0.12)', boxShadow: 'rgba(38,150,132,0.3) 0px 0px 0px 1px inset', color: '#3fbca6', fontSize: 15, fontWeight: 700, padding: '4px 10px' }}>−63% в сравнении с конкурентами</span>
             </div>
-            <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 16, color: '#c7d3ea' }}>
-              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>Все нарушения: что нашли / что делать / статья закона</span></div>
-              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>Готовые код-сниппеты для исправления</span></div>
-              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>PDF-версия на почту</span></div>
-              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>Доступ по ссылке — без регистрации</span></div>
+            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 15, color: '#c7d3ea' }}>
+              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>Все 21 пункт проверки — с деталями и статьёй закона</span></div>
+              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>Готовые код-сниппеты для разработчика</span></div>
+              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>PDF на почту + вечная ссылка</span></div>
+            </div>
+            <div style={{ marginTop: 24, borderTop: '1px solid rgba(186,215,247,0.08)', paddingTop: 20 }}>
+              <label style={{ fontSize: 16, color: '#9da7ba' }}>Почта для получения отчёта</label>
+              <input placeholder="you@company.ru" style={{ marginTop: 8, width: '100%', height: 46, border: 'none', outline: 'none', borderRadius: 6, background: 'rgba(199,211,234,0.06)', boxShadow: 'rgba(186,215,247,0.12) 0px 0px 0px 1px inset', color: '#ffffff', fontSize: 18, fontFamily: 'inherit', padding: '0 14px' }} />
+              <Link href="/pay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 14, width: '100%', height: 56, borderRadius: 999, background: '#663af3', boxShadow: '0 0 28px rgba(102,58,243,0.45)', color: '#ffffff', fontFamily: 'inherit', fontSize: 19, fontWeight: 700 }}>Открыть полный отчёт</Link>
+              <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap', fontFamily: mono, fontSize: 13, letterSpacing: '0.06em', color: '#9da7ba', textTransform: 'uppercase' }}>
+                <span>доступ сразу после оплаты</span><span>·</span><span>карта или СБП</span><span>·</span><span>без регистрации</span>
+              </div>
+              <div style={{ marginTop: 12, fontSize: 14, color: '#9da7ba', textAlign: 'center' }}>Оплачивая, вы принимаете <Link href="/offer" style={{ color: '#c7d3ea', textDecoration: 'underline', textDecorationColor: 'rgba(186,215,247,0.3)' }}>оферту</Link>. Отчёт носит информационный характер.</div>
             </div>
           </div>
-          {/* от 20 000 ₽ */}
-          <div style={{ flex: 1, minWidth: 280, maxWidth: 400, borderRadius: 16, background: 'rgba(17,21,44,0.97)', boxShadow: 'rgba(216,236,248,0.22) 0px 1px 1px 0px inset, rgba(168,216,245,0.08) 0px 24px 48px 0px inset, rgba(186,215,247,0.16) 0px 0px 0px 1px inset, rgba(0,0,0,0.55) 0px 24px 48px 0px, rgba(102,58,243,0.28) 0px 0px 56px 0px', padding: 28, display: 'flex', flexDirection: 'column' }}>
+          {/* от 20 000 ₽ — premium + glow */}
+          <div style={{ position: 'relative', borderRadius: 16, background: 'rgba(17,21,44,0.97)', boxShadow: 'rgba(216,236,248,0.22) 0px 1px 1px 0px inset, rgba(168,216,245,0.08) 0px 24px 48px 0px inset, rgba(186,215,247,0.16) 0px 0px 0px 1px inset, rgba(0,0,0,0.55) 0px 24px 48px 0px, rgba(102,58,243,0.28) 0px 0px 56px 0px', padding: '22px 24px', display: 'flex', flexDirection: 'column' }}>
+            <span style={{ position: 'absolute', top: -2, left: -2, width: 4, height: 4, borderRadius: 9999, background: '#d8ecf8', opacity: 0.5, boxShadow: '0 0 6px rgba(216,236,248,0.9)' }} />
+            <span style={{ position: 'absolute', top: -2, right: -2, width: 4, height: 4, borderRadius: 9999, background: '#d8ecf8', opacity: 0.5, boxShadow: '0 0 6px rgba(216,236,248,0.9)' }} />
+            <span style={{ position: 'absolute', bottom: -2, left: -2, width: 4, height: 4, borderRadius: 9999, background: '#d8ecf8', opacity: 0.5, boxShadow: '0 0 6px rgba(216,236,248,0.9)' }} />
+            <span style={{ position: 'absolute', bottom: -2, right: -2, width: 4, height: 4, borderRadius: 9999, background: '#d8ecf8', opacity: 0.5, boxShadow: '0 0 6px rgba(216,236,248,0.9)' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ fontFamily: mono, fontSize: 14, letterSpacing: '0.1em', color: '#c7d3ea', textTransform: 'uppercase' }}>Исправим за вас</div>
-              <span style={{ marginLeft: 'auto', borderRadius: 6, background: 'rgba(102,58,243,0.18)', boxShadow: 'rgba(102,58,243,0.45) 0px 0px 0px 1px inset', color: '#cbbcff', fontSize: 13, fontWeight: 700, padding: '4px 10px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Рекомендуем</span>
+              <div style={{ fontFamily: dela, fontWeight: 400, fontSize: 'clamp(20px, 2.4vw, 26px)', lineHeight: 1.08, color: '#d8ecf8', textTransform: 'uppercase' }}>Исправим все проблемы за вас</div>
             </div>
-            <div style={{ ...skywash, fontFamily: dela, fontSize: 38, marginTop: 12 }}>от 20 000 ₽</div>
-            <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 16, color: '#c7d3ea' }}>
-              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span style={{ fontWeight: 700, color: '#d8ecf8' }}>Полный отчёт за 700 ₽ — уже включён</span></div>
+            <div style={{ ...skywash, fontFamily: dela, fontSize: 30, fontWeight: 400, marginTop: 10 }}>от 20 000 ₽</div>
+            <div style={{ marginTop: 12 }}>
+              <span style={{ display: 'inline-block', borderRadius: 999, background: 'rgba(102,58,243,0.2)', boxShadow: 'rgba(102,58,243,0.5) 0px 0px 0px 1px inset', color: '#cbbcff', fontSize: 12, fontWeight: 700, padding: '5px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Рекомендуем</span>
+            </div>
+            <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 16, color: '#c7d3ea' }}>
+              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span style={{ fontWeight: 700, color: '#d8ecf8' }}>Полный отчёт за 690 ₽ — уже включён</span></div>
               <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>Доработаем код сайта по всем пунктам отчёта</span></div>
               <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>Обновим документы: политика, оферта, согласия</span></div>
-              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>Срок — от 5 рабочих дней, по договору</span></div>
+              <div style={{ display: 'flex', gap: 10 }}><span style={{ color: '#269684' }}>✓</span><span>Перепроверим сайт до зелёного статуса</span></div>
             </div>
-            <div style={{ marginTop: 20, borderTop: '1px solid rgba(186,215,247,0.08)', paddingTop: 18 }}>
-              <LeadCapture placeholder="телефон или @telegram" buttonLabel="Оставить заявку" sentLabel="Заявка отправлена — свяжемся в течение рабочего дня" successBlock compact />
+            <div style={{ marginTop: 'auto', paddingTop: 20 }}>
+              <LeadCapture placeholder="телефон или @telegram" buttonLabel="Исправить все проблемы" sentLabel="Заявка отправлена — свяжемся в течение рабочего дня" successBlock compact />
             </div>
           </div>
         </div>
@@ -310,6 +336,25 @@ export default function Home() {
               <span style={{ color: '#b6d9fc', fontSize: 15 }}>Читать →</span>
             </Link>
           ))}
+        </div>
+        <Link href="/blog" className="hover-lift" style={{ display: 'inline-block', marginTop: 28, borderRadius: 999, background: 'rgba(186,214,247,0.06)', boxShadow: 'rgba(186,215,247,0.12) 0px 0px 0px 1px inset', color: '#ffffff', fontFamily: 'inherit', fontSize: 16, fontWeight: 500, padding: '10px 24px' }}>Все статьи</Link>
+      </section>
+
+      {/* ============ CROSS-SELL: SEO ============ */}
+      <section style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 24px 0' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', borderRadius: 16, background: 'linear-gradient(180deg, rgba(186,214,247,0.09), rgba(186,214,247,0.035))', boxShadow: 'rgba(216,236,248,0.16) 0px 1px 1px 0px inset, rgba(186,215,247,0.2) 0px 0px 0px 1px inset, rgba(0,0,0,0.5) 0px 20px 40px -14px, rgba(102,58,243,0.15) 0px 0px 48px 0px', padding: '40px 44px', display: 'flex', alignItems: 'center', gap: 30, flexWrap: 'wrap' }}>
+          <div style={{ width: 76, height: 76, borderRadius: 9999, flexShrink: 0, background: 'rgba(186,214,247,0.06)', boxShadow: 'rgba(186,215,247,0.16) 0px 0px 0px 1px inset, rgba(102,58,243,0.15) 0px 0px 22px 0px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#b6d9fc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 14 L16 9" />
+              <path d="M4.5 18 a9 9 0 1 1 15 0" />
+              <circle cx="12" cy="14" r="1.4" fill="#b6d9fc" stroke="none" />
+            </svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 260 }}>
+            <div style={{ fontFamily: dela, fontWeight: 400, fontSize: 'clamp(24px, 2.8vw, 34px)', lineHeight: 1.08, color: '#d8ecf8', textTransform: 'uppercase' }}>Нужна проверка вашего сайта на SEO оптимизацию техническое здоровье?</div>
+            <div style={{ marginTop: 12, fontSize: 18, color: '#c7d3ea' }}>SEO, скорость, SSL и безопасность — бесплатный экспресс-аудит за 30 секунд</div>
+          </div>
+          <Link href="/seo" style={{ flexShrink: 0, borderRadius: 999, background: '#663af3', boxShadow: '0 0 28px rgba(102,58,243,0.5)', color: '#ffffff', fontFamily: 'inherit', fontSize: 18, fontWeight: 700, padding: '18px 32px' }}>Запустить SEO-аудит →</Link>
         </div>
       </section>
     </div>
